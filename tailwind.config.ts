@@ -8,14 +8,13 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -66,17 +65,21 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         glow: {
-          green: "hsl(var(--glow-green))",
+          purple: "hsl(var(--glow-purple))",
           blue: "hsl(var(--glow-blue))",
+          green: "hsl(var(--glow-green))",
           amber: "hsl(var(--glow-amber))",
           crimson: "hsl(var(--glow-crimson))",
         },
         "surface-elevated": "hsl(var(--surface-elevated))",
+        "surface-glass": "hsl(var(--surface-glass))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
       },
       keyframes: {
         "accordion-down": {
@@ -88,10 +91,10 @@ export default {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { opacity: "0.4" },
+          "0%, 100%": { opacity: "0.5" },
           "50%": { opacity: "1" },
         },
-        "float": {
+        float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
         },
@@ -99,8 +102,19 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "float": "float 3s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 2.5s ease-in-out infinite",
+        float: "float 3s ease-in-out infinite",
+      },
+      backgroundImage: {
+        "gradient-brand": "linear-gradient(135deg, hsl(var(--grad-purple)), hsl(var(--grad-blue)))",
+        "gradient-brand-radial": "radial-gradient(ellipse at top, hsl(var(--glow-purple) / 0.15), transparent 60%)",
+      },
+      boxShadow: {
+        "glow-sm": "0 0 12px hsl(var(--glow-purple) / 0.25)",
+        "glow-md": "0 0 24px hsl(var(--glow-purple) / 0.35), 0 0 60px hsl(var(--glow-purple) / 0.12)",
+        "glow-blue": "0 0 24px hsl(var(--glow-blue) / 0.35), 0 0 60px hsl(var(--glow-blue) / 0.12)",
+        "card": "0 4px 24px hsl(225 14% 4% / 0.5), 0 1px 0 hsl(220 20% 100% / 0.04) inset",
+        "card-hover": "0 8px 40px hsl(225 14% 4% / 0.6), 0 0 0 1px hsl(var(--primary) / 0.2)",
       },
     },
   },
