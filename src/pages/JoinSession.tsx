@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Brain, Users, Zap, CalendarDays, Loader2, AlertTriangle, UserCheck } from "lucide-react";
+import { ArrowRight, ArrowLeft, Brain, Users, Zap, CalendarDays, Loader2, AlertTriangle, UserCheck, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -8,11 +8,9 @@ import {
   calculateUrgency,
   urgencyLabel,
   daysUntilExam,
-  formGroup,
-  generateMockPool,
   type MatchResult,
-  type WaitingUser,
 } from "@/lib/matchmaking";
+import { useMatchmaking, persistSession } from "@/hooks/useMatchmaking";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +31,7 @@ const urgencyColors: Record<string, string> = {
   Low: "text-primary",
 };
 
-// ─── Current user mock focus score (would come from auth/profile in prod) ───
+// ─── Current user focus score (would come from auth/profile in prod) ──────────
 
 const CURRENT_USER_FOCUS = 76;
 
@@ -76,53 +74,37 @@ const JoinSession = () => {
   const [duration, setDuration] = useState("");
   const [intensity, setIntensity] = useState("");
 
-  // Step 3 — match result
-  const [matching, setMatching] = useState(false);
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
-
   const canProceed =
     step === 1 ? !!(exam && subject && examDate) :
     step === 2 ? !!(duration && intensity) :
     true;
 
-  // Run matchmaking when entering step 3
-  useEffect(() => {
-    if (step !== 3) return;
-    setMatching(true);
-    setMatchResult(null);
+  // ── Real matchmaking via Supabase waiting_pool ──────────────────────────────
+  const examDateObj = examDate ? new Date(examDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // Simulate network latency (matching engine call)
-    const timeout = setTimeout(() => {
-      const parsedDate = new Date(examDate);
-      const currentUser: WaitingUser = {
-        user_id: "current_user",
-        display_name: "You",
-        exam_type: exam,
-        subject,
-        time_slot: "20:00",             // would be real slot selection in prod
-        duration,
-        intensity,
-        focus_score: CURRENT_USER_FOCUS,
-        exam_date: parsedDate,
-        urgency: calculateUrgency(parsedDate),
-        status: "waiting",
-        joined_at: new Date(),
-      };
-
-      // Generate a simulated waiting pool matching exam+subject+slot
-      const pool = generateMockPool(exam, subject, "20:00", duration, 12);
-      const result = formGroup(currentUser, pool);
-
-      setMatchResult(result);
-      setMatching(false);
-    }, 1800); // realistic "AI thinking" delay
-
-    return () => clearTimeout(timeout);
-  }, [step, exam, subject, examDate, duration, intensity]);
+  const { matching, matchResult, poolSize, error } = useMatchmaking({
+    exam_type: exam,
+    subject,
+    duration,
+    intensity,
+    focus_score: CURRENT_USER_FOCUS,
+    exam_date: examDateObj,
+    enabled: step === 3 && !!(exam && subject && duration && intensity && examDate),
+  });
 
   // Computed urgency display
   const urgency = examDate ? calculateUrgency(new Date(examDate)) : null;
   const days = examDate ? daysUntilExam(new Date(examDate)) : null;
+
+  // Enter session — persist to DB then navigate
+  const handleEnterSession = async () => {
+    if (!matchResult) return;
+    const participantIds = matchResult.group.map((u) => u.user_id);
+    await persistSession(matchResult, participantIds);
+    navigate("/study-room", {
+      state: { matchResult, exam, subject, duration, intensity },
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -277,8 +259,21 @@ const JoinSession = () => {
           {/* ── Step 3 — AI Match Preview ── */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <h2 className="text-2xl font-display font-bold mb-2">AI Match Preview</h2>
-              <p className="text-muted-foreground mb-8">Running compatibility analysis…</p>
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-display font-bold">AI Match Preview</h2>
+                <div className="flex items-center gap-1.5 ml-auto px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+                  <Wifi className="h-3 w-3 text-primary animate-pulse" />
+                  <span className="text-xs text-primary font-medium">Live · {poolSize} in pool</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground mb-8">Scanning real waiting pool · Forming optimal batch…</p>
+
+              {/* Error state */}
+              {error && (
+                <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 mb-4 text-sm text-destructive">
+                  Connection error: {error}. Using local algorithm as fallback.
+                </div>
+              )}
 
               {/* Matching loader */}
               {matching && (
@@ -447,17 +442,7 @@ const JoinSession = () => {
           ) : (
           <Button
               variant="hero"
-              onClick={() =>
-                navigate("/study-room", {
-                  state: {
-                    matchResult,
-                    exam,
-                    subject,
-                    duration,
-                    intensity,
-                  },
-                })
-              }
+              onClick={handleEnterSession}
               disabled={matching || !matchResult}
             >
               <Zap className="mr-1 h-4 w-4" />

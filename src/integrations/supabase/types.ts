@@ -14,13 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      active_sessions: {
+        Row: {
+          avg_compatibility: number
+          avg_focus: number
+          capacity: string
+          created_at: string
+          duration: string
+          ends_at: string | null
+          exam_type: string
+          id: string
+          intensity: string
+          participant_user_ids: string[]
+          session_id: string
+          subject: string
+          urgency_label: string
+        }
+        Insert: {
+          avg_compatibility?: number
+          avg_focus?: number
+          capacity?: string
+          created_at?: string
+          duration: string
+          ends_at?: string | null
+          exam_type: string
+          id?: string
+          intensity: string
+          participant_user_ids?: string[]
+          session_id: string
+          subject: string
+          urgency_label?: string
+        }
+        Update: {
+          avg_compatibility?: number
+          avg_focus?: number
+          capacity?: string
+          created_at?: string
+          duration?: string
+          ends_at?: string | null
+          exam_type?: string
+          id?: string
+          intensity?: string
+          participant_user_ids?: string[]
+          session_id?: string
+          subject?: string
+          urgency_label?: string
+        }
+        Relationships: []
+      }
+      waiting_pool: {
+        Row: {
+          display_name: string
+          duration: string
+          exam_date: string
+          exam_type: string
+          expires_at: string
+          focus_score: number
+          id: string
+          intensity: string
+          joined_at: string
+          status: string
+          subject: string
+          time_slot: string
+          urgency: number
+          user_id: string
+        }
+        Insert: {
+          display_name?: string
+          duration: string
+          exam_date: string
+          exam_type: string
+          expires_at?: string
+          focus_score?: number
+          id?: string
+          intensity: string
+          joined_at?: string
+          status?: string
+          subject: string
+          time_slot?: string
+          urgency?: number
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          duration?: string
+          exam_date?: string
+          exam_type?: string
+          expires_at?: string
+          focus_score?: number
+          id?: string
+          intensity?: string
+          joined_at?: string
+          status?: string
+          subject?: string
+          time_slot?: string
+          urgency?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_waiting_pool: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
