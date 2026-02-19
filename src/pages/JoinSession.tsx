@@ -445,9 +445,19 @@ const JoinSession = () => {
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
-            <Button
+          <Button
               variant="hero"
-              onClick={() => navigate("/study-room")}
+              onClick={() =>
+                navigate("/study-room", {
+                  state: {
+                    matchResult,
+                    exam,
+                    subject,
+                    duration,
+                    intensity,
+                  },
+                })
+              }
               disabled={matching || !matchResult}
             >
               <Zap className="mr-1 h-4 w-4" />
