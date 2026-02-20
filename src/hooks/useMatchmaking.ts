@@ -1,26 +1,21 @@
 /**
- * useMatchmaking — Real-time matchmaking hook
+ * useMatchmaking — Real matchmaking via edge function + Supabase Realtime
  *
  * Flow:
  * 1. Generate or retrieve anonymous user_id from localStorage
  * 2. Insert current user into waiting_pool
- * 3. Subscribe to realtime changes on waiting_pool (same exam+subject+time_slot+duration)
- * 4. On every pool update, run the local formGroup() algorithm against live DB data
- * 5. If a good group forms, persist it to active_sessions and navigate to study room
+ * 3. Call run-matchmaking edge function (server-side grouping)
+ * 4. Subscribe to active_sessions realtime — detect when THIS user_id appears
+ * 5. Poll every 3s as fallback if realtime misses an event
+ * 6. When found → return session so UI can navigate to /study-room
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  calculateUrgency,
-  formGroup,
-  type WaitingUser,
-  type MatchResult,
-} from "@/lib/matchmaking";
 
-// ─── Anonymous identity ───────────────────────────────────────────────────────
+// ─── Anonymous identity ────────────────────────────────────────────────────────
 
-function getOrCreateUserId(): string {
+export function getOrCreateUserId(): string {
   const key = "syncstudy_user_id";
   let id = localStorage.getItem(key);
   if (!id) {
@@ -30,42 +25,22 @@ function getOrCreateUserId(): string {
   return id;
 }
 
-// ─── DB row type (subset of waiting_pool columns we use) ─────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface WaitingPoolRow {
-  id: string;
-  user_id: string;
-  display_name: string;
+export interface ActiveSessionRow {
+  session_id: string;
   exam_type: string;
   subject: string;
-  time_slot: string;
   duration: string;
   intensity: string;
-  focus_score: number;
-  exam_date: string;         // ISO date string from DB
-  urgency: number;
-  status: string;
-  joined_at: string;
+  avg_focus: number;
+  avg_compatibility: number;
+  urgency_label: string;
+  capacity: string;
+  participant_user_ids: string[];
+  ends_at: string | null;
+  created_at: string;
 }
-
-function rowToWaitingUser(row: WaitingPoolRow): WaitingUser {
-  return {
-    user_id: row.user_id,
-    display_name: row.display_name,
-    exam_type: row.exam_type,
-    subject: row.subject,
-    time_slot: row.time_slot,
-    duration: row.duration,
-    intensity: row.intensity,
-    focus_score: row.focus_score,
-    exam_date: new Date(row.exam_date),
-    urgency: row.urgency as 1 | 2 | 3,
-    status: row.status as "waiting" | "in_session" | "completed",
-    joined_at: new Date(row.joined_at),
-  };
-}
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export interface UseMatchmakingParams {
   exam_type: string;
@@ -74,15 +49,17 @@ export interface UseMatchmakingParams {
   intensity: string;
   focus_score: number;
   exam_date: Date;
-  enabled: boolean;           // only run when step === 3
+  enabled: boolean;
 }
 
 export interface UseMatchmakingResult {
   matching: boolean;
-  matchResult: MatchResult | null;
+  activeSession: ActiveSessionRow | null;
   poolSize: number;
   error: string | null;
 }
+
+// ─── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useMatchmaking({
   exam_type,
@@ -96,77 +73,104 @@ export function useMatchmaking({
   const userId = useRef(getOrCreateUserId());
   const poolEntryId = useRef<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const runningRef = useRef(false);
 
   const [matching, setMatching] = useState(false);
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSessionRow | null>(null);
   const [poolSize, setPoolSize] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Build the current user's WaitingUser object
-  const currentUser: WaitingUser = {
-    user_id: userId.current,
-    display_name: "You",
-    exam_type,
-    subject,
-    time_slot: "20:00",
-    duration,
-    intensity,
-    focus_score,
-    exam_date,
-    urgency: calculateUrgency(exam_date),
-    status: "waiting",
-    joined_at: new Date(),
-  };
-
-  // Run matching algorithm against live pool
-  const runMatch = useCallback(
-    (pool: WaitingUser[]) => {
-      const result = formGroup(currentUser, pool);
-      setMatchResult(result);
-      setPoolSize(pool.length);
-      setMatching(false);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [exam_type, subject, duration, intensity, focus_score, exam_date]
-  );
-
-  // Fetch current pool from DB and run algorithm
-  const fetchAndMatch = useCallback(async () => {
-    const { data, error: fetchErr } = await supabase
-      .from("waiting_pool")
+  // Check active_sessions for a row that contains this user_id
+  const checkForSession = useCallback(async (): Promise<ActiveSessionRow | null> => {
+    const { data, error: err } = await supabase
+      .from("active_sessions")
       .select("*")
       .eq("exam_type", exam_type)
       .eq("subject", subject)
-      .eq("duration", duration)
-      .eq("status", "waiting")
-      .neq("user_id", userId.current)
-      .order("joined_at", { ascending: true });
+      .contains("participant_user_ids", [userId.current])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (fetchErr) {
-      setError(fetchErr.message);
-      setMatching(false);
-      return;
+    if (err) {
+      console.error("checkForSession error:", err.message);
+      return null;
     }
+    return data as ActiveSessionRow | null;
+  }, [exam_type, subject]);
 
-    const pool = (data as WaitingPoolRow[]).map(rowToWaitingUser);
-    runMatch(pool);
-  }, [exam_type, subject, duration, runMatch]);
+  // Call edge function to attempt grouping
+  const runMatchmaking = useCallback(async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const anonKey = (supabase as any).supabaseKey as string;
+
+      const res = await supabase.functions.invoke("run-matchmaking", {
+        body: {
+          user_id: userId.current,
+          exam_type,
+          subject,
+          duration,
+          focus_score,
+        },
+      });
+
+      if (res.error) {
+        console.error("Edge fn error:", res.error);
+        setError(res.error.message);
+        return;
+      }
+
+      const result = res.data as { session_id?: string; waiting?: boolean; pool_size?: number; group_size?: number };
+
+      if (result.pool_size !== undefined) {
+        setPoolSize(result.pool_size);
+      }
+
+      if (result.session_id) {
+        // Session created — fetch the full row
+        const found = await checkForSession();
+        if (found) {
+          setActiveSession(found);
+          setMatching(false);
+        }
+      }
+    } catch (e) {
+      console.error("runMatchmaking caught:", e);
+    } finally {
+      runningRef.current = false;
+    }
+  }, [exam_type, subject, duration, focus_score, checkForSession]);
 
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
     setMatching(true);
-    setMatchResult(null);
+    setActiveSession(null);
     setError(null);
+    setPoolSize(0);
+    runningRef.current = false;
 
-    // 1. Insert current user into waiting_pool
-    const insertEntry = async () => {
+    // Step 1 — Insert into waiting_pool
+    const bootstrap = async () => {
+      // Upsert: if user already in pool, update
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const daysLeft = Math.ceil((exam_date.getTime() - Date.now()) / msPerDay);
+      const urgency = daysLeft <= 30 ? 3 : daysLeft <= 90 ? 2 : 1;
+
+      // Delete old entry for same user first to avoid duplicate
+      await supabase.from("waiting_pool").delete().eq("user_id", userId.current);
+
       const { data, error: insertErr } = await supabase
         .from("waiting_pool")
         .insert({
           user_id: userId.current,
-          display_name: "You",
+          display_name: "Student",
           exam_type,
           subject,
           time_slot: "20:00",
@@ -174,62 +178,125 @@ export function useMatchmaking({
           intensity,
           focus_score,
           exam_date: exam_date.toISOString().split("T")[0],
-          urgency: calculateUrgency(exam_date),
+          urgency,
           status: "waiting",
         })
         .select("id")
         .single();
 
-      if (insertErr || !data) {
-        if (!cancelled) {
-          // If duplicate (user already in pool), that's fine — still fetch
-          setError(null);
-        }
-      } else {
+      if (insertErr) {
+        console.error("Insert waiting_pool error:", insertErr.message);
+      } else if (data) {
         poolEntryId.current = data.id;
       }
 
-      // 2. Initial fetch + match
-      if (!cancelled) {
-        await fetchAndMatch();
+      if (cancelled) return;
+
+      // Check if already in a session (rejoining)
+      const existing = await checkForSession();
+      if (existing) {
+        setActiveSession(existing);
+        setMatching(false);
+        return;
       }
+
+      // First matchmaking attempt
+      await runMatchmaking();
     };
 
-    insertEntry();
+    bootstrap();
 
-    // 3. Subscribe to realtime changes
+    // Step 2 — Realtime subscription on active_sessions
     const channel = supabase
-      .channel(`waiting_pool:${exam_type}:${subject}:${duration}`)
+      .channel(`active_sessions:${exam_type}:${subject}:${userId.current}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
+          schema: "public",
+          table: "active_sessions",
+          filter: `exam_type=eq.${exam_type}`,
+        },
+        async (payload) => {
+          if (cancelled) return;
+          const row = payload.new as ActiveSessionRow;
+          // Check if this user is in the new session
+          if (row.participant_user_ids?.includes(userId.current)) {
+            setActiveSession(row);
+            setMatching(false);
+          } else {
+            // Someone else got matched — trigger our own matchmaking attempt
+            await runMatchmaking();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
           schema: "public",
           table: "waiting_pool",
           filter: `exam_type=eq.${exam_type}`,
         },
-        () => {
-          if (!cancelled) {
-            fetchAndMatch();
+        async (payload) => {
+          if (cancelled) return;
+          const row = payload.new as any;
+          if (row.subject === subject && row.duration === duration && row.user_id !== userId.current) {
+            // New peer joined — try to form a group
+            setPoolSize((prev) => prev + 1);
+            await runMatchmaking();
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Realtime channel status:", status);
+      });
 
     channelRef.current = channel;
 
+    // Step 3 — Polling fallback every 4s
+    pollRef.current = setInterval(async () => {
+      if (cancelled) return;
+
+      // Check pool size
+      const { count } = await supabase
+        .from("waiting_pool")
+        .select("id", { count: "exact", head: true })
+        .eq("exam_type", exam_type)
+        .eq("subject", subject)
+        .eq("duration", duration)
+        .eq("status", "waiting");
+
+      if (count !== null) setPoolSize(count);
+
+      // Check if we're now in a session
+      const found = await checkForSession();
+      if (found) {
+        setActiveSession(found);
+        setMatching(false);
+        return;
+      }
+
+      // Try matching again
+      await runMatchmaking();
+    }, 4000);
+
     return () => {
       cancelled = true;
+      runningRef.current = false;
 
-      // Cleanup: remove from waiting pool when user leaves step 3
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+
+      // Remove from waiting_pool
       if (poolEntryId.current) {
         supabase
           .from("waiting_pool")
           .delete()
           .eq("id", poolEntryId.current)
-          .then(() => {
-            poolEntryId.current = null;
-          });
+          .then(() => { poolEntryId.current = null; });
       }
 
       if (channelRef.current) {
@@ -237,36 +304,13 @@ export function useMatchmaking({
         channelRef.current = null;
       }
     };
-  }, [enabled, exam_type, subject, duration, intensity, focus_score, fetchAndMatch, exam_date]);
+  }, [enabled, exam_type, subject, duration, intensity, focus_score, exam_date, checkForSession, runMatchmaking]);
 
-  return { matching, matchResult, poolSize, error };
+  return { matching, activeSession, poolSize, error };
 }
 
-// ─── Persist a confirmed session to active_sessions ──────────────────────────
+// ─── Legacy persistSession (kept for compatibility) ────────────────────────────
 
-export async function persistSession(
-  result: MatchResult,
-  participantIds: string[]
-): Promise<void> {
-  await supabase.from("active_sessions").insert({
-    session_id: result.session_id,
-    exam_type: result.group[0]?.exam_type ?? "",
-    subject: result.group[0]?.subject ?? "",
-    duration: result.group[0]?.duration ?? "",
-    intensity: result.group[0]?.intensity ?? "",
-    avg_focus: result.avg_focus,
-    avg_compatibility: result.avg_compatibility,
-    urgency_label: result.urgency_label,
-    capacity: result.capacity,
-    participant_user_ids: participantIds,
-    ends_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2hr max
-  });
-
-  // Mark participants as in_session in waiting_pool
-  if (participantIds.length > 0) {
-    await supabase
-      .from("waiting_pool")
-      .update({ status: "in_session" })
-      .in("user_id", participantIds);
-  }
+export async function persistSession(): Promise<void> {
+  // No-op: session is now created server-side by the edge function
 }
