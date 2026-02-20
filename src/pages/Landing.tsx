@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Users, Target, Brain, Shield, Zap, Timer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
 import { useNavigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -27,34 +28,36 @@ const Landing = () => {
     <div className="min-h-screen bg-background overflow-hidden relative">
 
       {/* ── Hero ── */}
-      <header className="relative min-h-screen flex flex-col">
+      <header className="relative min-h-screen flex flex-col bg-white overflow-hidden">
         {/* Layered background */}
         <div className="absolute inset-0 pointer-events-none">
-          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-15 mix-blend-luminosity" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/85 to-background" />
-          <div className="absolute inset-0 bg-radial-purple" />
-          <div className="absolute inset-0 bg-grid-pattern opacity-100" />
-          {/* Floating orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[hsl(263,70%,58%,0.06)] blur-3xl" />
-          <div className="absolute top-1/3 right-1/4 w-80 h-80 rounded-full bg-[hsl(217,91%,55%,0.05)] blur-3xl" />
+          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/50 to-white/90" />
+          {/* Soft colored orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[hsl(263,70%,58%)] opacity-10 blur-3xl" />
+          <div className="absolute top-1/3 right-1/4 w-80 h-80 rounded-full bg-[hsl(217,91%,55%)] opacity-10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
         </div>
 
         {/* Nav */}
         <nav className="relative z-10 flex items-center justify-between px-6 lg:px-14 py-5">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] flex items-center justify-center shadow-glow-sm">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] flex items-center justify-center shadow-lg">
               <Zap className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-display font-bold tracking-tight">SyncStudy</span>
+            <span className="text-xl font-display font-bold tracking-tight text-gray-900">SyncStudy</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how" className="hover:text-foreground transition-colors">How It Works</a>
-            <a href="#stats" className="hover:text-foreground transition-colors">Stats</a>
+          <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
+            <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
+            <a href="#how" className="hover:text-gray-900 transition-colors">How It Works</a>
+            <a href="#stats" className="hover:text-gray-900 transition-colors">Stats</a>
           </div>
-          <Button variant="hero-outline" size="sm" onClick={() => navigate("/dashboard")}>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="h-9 px-5 rounded-xl border-2 border-[hsl(263,70%,58%)] text-[hsl(263,70%,58%)] text-sm font-semibold hover:bg-[hsl(263,70%,58%)] hover:text-white transition-all duration-200"
+          >
             Enter Platform
-          </Button>
+          </button>
         </nav>
 
         {/* Hero content */}
@@ -67,15 +70,15 @@ const Landing = () => {
               transition={{ duration: 0.5 }}
               className="mb-7"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-primary/20 text-sm text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-glow-green animate-pulse-green" />
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-[hsl(263,70%,58%)]/30 text-sm text-[hsl(263,70%,45%)] shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 47 students studying right now
                 <Sparkles className="h-3 w-3 ml-0.5 opacity-70" />
               </div>
             </motion.div>
 
             <motion.h1
-              className="text-5xl md:text-7xl lg:text-[88px] font-display font-bold tracking-tight leading-[1.05] mb-6"
+              className="text-5xl md:text-7xl lg:text-[88px] font-display font-bold tracking-tight leading-[1.05] mb-6 text-gray-900"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -86,7 +89,7 @@ const Landing = () => {
             </motion.h1>
 
             <motion.p
-              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+              className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -101,13 +104,21 @@ const Landing = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <Button variant="hero" size="xl" onClick={() => navigate("/join-session")} className="group">
+              {/* Primary CTA — vivid gradient */}
+              <button
+                onClick={() => navigate("/join-session")}
+                className="group inline-flex items-center justify-center gap-2 h-14 px-10 rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200"
+              >
                 Join Next Session
-                <ArrowRight className="ml-1 h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
-              </Button>
-              <Button variant="hero-outline" size="xl" onClick={() => navigate("/dashboard")}>
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              {/* Secondary CTA — white with border */}
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="inline-flex items-center justify-center h-14 px-10 rounded-2xl text-base font-semibold text-gray-800 bg-white border-2 border-gray-200 shadow hover:border-[hsl(263,70%,58%)]/50 hover:text-[hsl(263,70%,58%)] hover:shadow-md active:scale-[0.97] transition-all duration-200"
+              >
                 View Dashboard
-              </Button>
+              </button>
             </motion.div>
 
             {/* Live avatar row */}
@@ -117,12 +128,12 @@ const Landing = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
             >
-              <div className="flex items-center gap-4 text-sm text-muted-foreground glass rounded-full px-5 py-2.5 border border-white/5">
+              <div className="flex items-center gap-4 text-sm text-gray-600 bg-white/80 backdrop-blur rounded-full px-5 py-2.5 border border-gray-200 shadow-sm">
                 <div className="flex -space-x-2.5">
                   {[...Array(5)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-7 w-7 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white"
+                      className="h-7 w-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-semibold text-white"
                       style={{ background: `linear-gradient(135deg, hsl(${250 + i * 15}, 70%, 55%), hsl(${210 + i * 15}, 80%, 50%))` }}
                     >
                       {String.fromCharCode(65 + i)}
