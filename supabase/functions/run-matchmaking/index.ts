@@ -163,8 +163,9 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Matchmaking error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+    console.error("Matchmaking error:", errorMsg);
+    return new Response(JSON.stringify({ error: errorMsg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
