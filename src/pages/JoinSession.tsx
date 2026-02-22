@@ -10,6 +10,8 @@ import {
   daysUntilExam,
 } from "@/lib/matchmaking";
 import { useMatchmaking, type ActiveSessionRow } from "@/hooks/useMatchmaking";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +64,18 @@ function capacityMessage(session: ActiveSessionRow) {
 
 const JoinSession = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
+  const [profileName, setProfileName] = useState("Student");
+
+  // Fetch profile display name
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data?.display_name) setProfileName(data.display_name);
+      });
+  }, [user]);
 
   // Step 1 state
   const [exam, setExam] = useState("");
@@ -89,6 +102,8 @@ const JoinSession = () => {
     focus_score: CURRENT_USER_FOCUS,
     exam_date: examDateObj,
     enabled: step === 3 && !!(exam && subject && duration && intensity && examDate),
+    user_id: user?.id,
+    display_name: profileName,
   });
 
   // Auto-navigate when a real session is found

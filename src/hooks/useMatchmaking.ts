@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// ─── Anonymous identity ────────────────────────────────────────────────────────
+// ─── Get user ID (authenticated or anonymous fallback) ─────────────────────────
 
 export function getOrCreateUserId(): string {
   const key = "syncstudy_user_id";
@@ -50,6 +50,8 @@ export interface UseMatchmakingParams {
   focus_score: number;
   exam_date: Date;
   enabled: boolean;
+  user_id?: string;
+  display_name?: string;
 }
 
 export interface UseMatchmakingResult {
@@ -69,8 +71,10 @@ export function useMatchmaking({
   focus_score,
   exam_date,
   enabled,
+  user_id,
+  display_name,
 }: UseMatchmakingParams): UseMatchmakingResult {
-  const userId = useRef(getOrCreateUserId());
+  const userId = useRef(user_id || getOrCreateUserId());
   const poolEntryId = useRef<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -170,7 +174,7 @@ export function useMatchmaking({
         .from("waiting_pool")
         .insert({
           user_id: userId.current,
-          display_name: "Student",
+          display_name: display_name || "Student",
           exam_type,
           subject,
           time_slot: "20:00",
