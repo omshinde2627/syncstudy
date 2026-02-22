@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, LogOut, AlertTriangle, Volume2, VolumeX, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { ActiveSessionRow } from "@/hooks/useMatchmaking";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -125,9 +127,16 @@ interface Peer {
   label: string;
 }
 
+interface PeerProfile {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
 const StudyRoom = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const state = location.state as LocationState | null;
 
   // Real data from matchmaking or fallback defaults
@@ -143,11 +152,31 @@ const StudyRoom = () => {
   const [showChat, setShowChat] = useState(false);
   const [muted, setMuted] = useState(true);
   const [goals, setGoals] = useState(() => defaultGoals(subject, intensity));
+  const [peerProfiles, setPeerProfiles] = useState<PeerProfile[]>([]);
 
   const isSolo = !activeSession || activeSession.capacity === "solo";
   const peers: Peer[] = activeSession?.participant_user_ids
-    ?.map((uid, i) => ({ id: uid, label: `S${i + 1}` }))
+    ?.map((uid, i) => ({ id: uid, label: peerProfiles.find(p => p.id === uid)?.display_name || `S${i + 1}` }))
     ?? [];
+
+  // Fetch participant profiles
+  useEffect(() => {
+    if (!activeSession?.participant_user_ids?.length) return;
+    const fetchProfiles = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", activeSession.participant_user_ids);
+      if (data) {
+        setPeerProfiles(data.map(p => ({
+          id: p.user_id,
+          display_name: p.display_name || "Student",
+          avatar_url: p.avatar_url,
+        })));
+      }
+    };
+    fetchProfiles();
+  }, [activeSession]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -290,16 +319,22 @@ const StudyRoom = () => {
 
                 return (
                   <motion.div
-                    key={p.id}
-                    className={`absolute w-12 h-12 rounded-full ring-2 ${statusRing[status]} bg-secondary flex items-center justify-center text-sm font-semibold cursor-default`}
+                    key={`${p.id}-${i}`}
+                    className={`absolute w-12 h-12 rounded-full ring-2 ${statusRing[status]} bg-secondary flex items-center justify-center text-sm font-semibold cursor-default overflow-hidden`}
                     style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 260, damping: 20 }}
                     whileHover={{ scale: 1.12 }}
-                    title={`Student ${i + 1}`}
+                    title={p.label}
                   >
-                    {p.label.slice(0, 1)}
+                    {(() => {
+                      const profile = peerProfiles.find(pp => pp.id === p.id);
+                      if (profile?.avatar_url) {
+                        return <img src={profile.avatar_url} alt={p.label} className="h-full w-full object-cover" />;
+                      }
+                      return initials(p.label);
+                    })()}
                   </motion.div>
                 );
               })}
@@ -356,7 +391,7 @@ const StudyRoom = () => {
                 {peers.map((p, i) => {
                   const status = deriveStatus(i, peers.length);
                   return (
-                    <div key={p.id} className="flex items-center gap-2.5 py-1">
+                    <div key={`${p.id}-${i}`} className="flex items-center gap-2.5 py-1">
                       <div className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusDot[status]}`} />
                       <span className="text-sm text-muted-foreground flex-1">{p.label}</span>
                       <span className="text-xs text-muted-foreground/60 font-mono">—</span>
