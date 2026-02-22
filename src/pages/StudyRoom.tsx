@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, LogOut, AlertTriangle, Volume2, VolumeX, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import type { MatchResult, MatchedUser } from "@/lib/matchmaking";
-import { urgencyLabel } from "@/lib/matchmaking";
+import type { ActiveSessionRow } from "@/hooks/useMatchmaking";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -114,11 +113,16 @@ const SoloMode = ({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface LocationState {
-  matchResult: MatchResult;
+  activeSession?: ActiveSessionRow;
   exam: string;
   subject: string;
   duration: string;
   intensity: string;
+}
+
+interface Peer {
+  id: string;
+  label: string;
 }
 
 const StudyRoom = () => {
@@ -127,7 +131,7 @@ const StudyRoom = () => {
   const state = location.state as LocationState | null;
 
   // Real data from matchmaking or fallback defaults
-  const matchResult: MatchResult | null = state?.matchResult ?? null;
+  const activeSession: ActiveSessionRow | null = state?.activeSession ?? null;
   const exam = state?.exam ?? "JEE Main";
   const subject = state?.subject ?? "Physics";
   const duration = state?.duration ?? "45 min";
@@ -140,8 +144,10 @@ const StudyRoom = () => {
   const [muted, setMuted] = useState(true);
   const [goals, setGoals] = useState(() => defaultGoals(subject, intensity));
 
-  const isSolo = !matchResult || matchResult.capacity === "solo";
-  const peers: MatchedUser[] = matchResult?.group ?? [];
+  const isSolo = !activeSession || activeSession.capacity === "solo";
+  const peers: Peer[] = activeSession?.participant_user_ids
+    ?.map((uid, i) => ({ id: uid, label: `S${i + 1}` }))
+    ?? [];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -191,9 +197,9 @@ const StudyRoom = () => {
           <span className="px-3 py-1 rounded-full border border-primary/20 bg-primary/8 text-primary text-xs font-medium">
             {intensityLabel}
           </span>
-          {matchResult && (
+          {activeSession && (
             <span className="px-2 py-1 rounded-full border border-border text-muted-foreground text-xs font-mono">
-              Avg Focus {matchResult.avg_focus}
+              Avg Focus {activeSession.avg_focus}
             </span>
           )}
         </div>
@@ -284,16 +290,16 @@ const StudyRoom = () => {
 
                 return (
                   <motion.div
-                    key={p.user_id}
+                    key={p.id}
                     className={`absolute w-12 h-12 rounded-full ring-2 ${statusRing[status]} bg-secondary flex items-center justify-center text-sm font-semibold cursor-default`}
                     style={{ left: x, top: y, transform: "translate(-50%, -50%)" }}
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 260, damping: 20 }}
                     whileHover={{ scale: 1.12 }}
-                    title={`Focus: ${p.focus_score} · Compatibility: ${p.compatibility.toFixed(2)} · Urgency: ${urgencyLabel(p.urgency)}`}
+                    title={`Student ${i + 1}`}
                   >
-                    {initials(p.display_name)}
+                    {p.label.slice(0, 1)}
                   </motion.div>
                 );
               })}
@@ -350,10 +356,10 @@ const StudyRoom = () => {
                 {peers.map((p, i) => {
                   const status = deriveStatus(i, peers.length);
                   return (
-                    <div key={p.user_id} className="flex items-center gap-2.5 py-1">
+                    <div key={p.id} className="flex items-center gap-2.5 py-1">
                       <div className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusDot[status]}`} />
-                      <span className="text-sm text-muted-foreground flex-1">{p.display_name}</span>
-                      <span className="text-xs text-muted-foreground/60 font-mono">{p.focus_score}</span>
+                      <span className="text-sm text-muted-foreground flex-1">{p.label}</span>
+                      <span className="text-xs text-muted-foreground/60 font-mono">—</span>
                     </div>
                   );
                 })}
@@ -362,23 +368,23 @@ const StudyRoom = () => {
           )}
 
           {/* Match stats */}
-          {matchResult && !isSolo && (
+          {activeSession && !isSolo && (
             <div className="p-3 rounded-lg bg-secondary/50 border border-white/4 space-y-1.5">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Avg Compatibility</span>
-                <span className="font-mono text-primary">{matchResult.avg_compatibility.toFixed(2)}/3.00</span>
+                <span className="font-mono text-primary">{Number(activeSession.avg_compatibility).toFixed(2)}/3.00</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Avg Focus</span>
-                <span className="font-mono">{matchResult.avg_focus}</span>
+                <span className="font-mono">{activeSession.avg_focus}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Urgency</span>
-                <span className="font-mono">{matchResult.urgency_label}</span>
+                <span className="font-mono">{activeSession.urgency_label}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Session ID</span>
-                <span className="font-mono text-muted-foreground/50">{matchResult.session_id.slice(-8)}</span>
+                <span className="font-mono text-muted-foreground/50">{activeSession.session_id.slice(-8)}</span>
               </div>
             </div>
           )}
