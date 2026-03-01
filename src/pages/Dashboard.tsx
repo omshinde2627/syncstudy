@@ -1,20 +1,55 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock, Target, TrendingUp, Users, Flame, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import FocusScoreRing from "@/components/FocusScoreRing";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const activityFeed = [
-  { text: "12 students studying Math right now", time: "Live", live: true },
-  { text: "Next JEE batch starts in 20 min", time: "Soon", live: false },
-  { text: "Physics group completed 45-min session", time: "5m ago", live: false },
-  { text: "New Chemistry batch forming", time: "12m ago", live: false },
-  { text: "8 students completed their daily goal", time: "1h ago", live: false },
+  { text: "Students studying right now", time: "Live", live: true },
+  { text: "Join a session to get started", time: "Now", live: false },
 ];
+
+interface ProfileStats {
+  display_name: string;
+  focus_score: number;
+  total_sessions: number;
+  streak_days: number;
+  total_study_hours: number;
+  sessions_completed: number;
+  exam_target: string | null;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [stats, setStats] = useState<ProfileStats | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setStats(data as unknown as ProfileStats);
+      });
+  }, [user]);
+
+  const focusScore = stats?.focus_score ?? 50;
+  const displayName = stats?.display_name || "Student";
+  const totalSessions = stats?.total_sessions ?? 0;
+  const streakDays = stats?.streak_days ?? 0;
+  const totalHours = stats?.total_study_hours ?? 0;
+  const sessionsCompleted = stats?.sessions_completed ?? 0;
+  const examTarget = stats?.exam_target || null;
+
+  // Focus tier
+  const tier = focusScore >= 90 ? "Apex" : focusScore >= 75 ? "Focused" : focusScore >= 55 ? "Stabilizing" : "Drifter";
 
   return (
     <DashboardLayout>
@@ -26,8 +61,12 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-2xl font-display font-bold tracking-tight">Good evening, Student</h1>
-          <p className="text-muted-foreground text-sm mt-1">Your focus is building. Keep the streak alive.</p>
+          <h1 className="text-2xl font-display font-bold tracking-tight">
+            {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening"}, {displayName}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {streakDays > 0 ? `Your focus is building. ${streakDays}-day streak!` : "Start your first session to build your focus score."}
+          </p>
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-5">
@@ -45,22 +84,22 @@ const Dashboard = () => {
               <div className="flex flex-col md:flex-row items-center gap-8">
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-radial-purple opacity-40 blur-xl" />
-                  <FocusScoreRing score={76} />
+                  <FocusScoreRing score={focusScore} />
                 </div>
                 <div className="flex-1 space-y-4">
                   <div>
                     <h2 className="text-lg font-display font-semibold">Focus Score</h2>
-                    <p className="text-sm text-muted-foreground">Ranked: Focused · Top 28%</p>
+                    <p className="text-sm text-muted-foreground">Ranked: {tier}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-xl bg-secondary/70 border border-white/4">
-                      <div className="text-xs text-muted-foreground mb-1">Sessions This Week</div>
-                      <div className="text-xl font-display font-bold">14</div>
+                      <div className="text-xs text-muted-foreground mb-1">Total Sessions</div>
+                      <div className="text-xl font-display font-bold">{totalSessions}</div>
                     </div>
                     <div className="p-3 rounded-xl bg-secondary/70 border border-white/4">
                       <div className="text-xs text-muted-foreground mb-1">Streak</div>
                       <div className="text-xl font-display font-bold flex items-center gap-1">
-                        7 <Flame className="h-4 w-4 text-glow-amber" />
+                        {streakDays} {streakDays > 0 && <Flame className="h-4 w-4 text-glow-amber" />}
                       </div>
                     </div>
                   </div>
@@ -71,10 +110,10 @@ const Dashboard = () => {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { icon: Target, label: "Today's Goal", value: "3/5 hrs", color: "text-primary" },
-                { icon: Clock, label: "Next Session", value: "20 min", color: "text-glow-blue" },
-                { icon: TrendingUp, label: "Weekly Hours", value: "24.5h", color: "text-primary" },
-                { icon: Users, label: "Sessions Done", value: "156", color: "text-glow-amber" },
+                { icon: Target, label: "Focus Score", value: `${focusScore}`, color: "text-primary" },
+                { icon: Clock, label: "Study Hours", value: `${Number(totalHours).toFixed(1)}h`, color: "text-glow-blue" },
+                { icon: TrendingUp, label: "Streak", value: `${streakDays}d`, color: "text-primary" },
+                { icon: Users, label: "Sessions Done", value: `${sessionsCompleted}`, color: "text-glow-amber" },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -91,21 +130,22 @@ const Dashboard = () => {
             </div>
 
             {/* Exam countdown */}
-            <motion.div
-              className="p-4 rounded-2xl glass-card flex items-center gap-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.28 }}
-            >
-              <div className="h-10 w-10 rounded-xl bg-gradient-brand-subtle border border-primary/20 flex items-center justify-center flex-shrink-0">
-                <CalendarDays className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">JEE Main</p>
-                <p className="text-xs text-muted-foreground">24 days remaining</p>
-              </div>
-              <div className="text-2xl font-display font-bold text-gradient-brand">24</div>
-            </motion.div>
+            {examTarget && (
+              <motion.div
+                className="p-4 rounded-2xl glass-card flex items-center gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+              >
+                <div className="h-10 w-10 rounded-xl bg-gradient-brand-subtle border border-primary/20 flex items-center justify-center flex-shrink-0">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{examTarget}</p>
+                  <p className="text-xs text-muted-foreground">Your target exam</p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Join Session CTA */}
             <motion.div
@@ -118,7 +158,7 @@ const Dashboard = () => {
               <div className="relative flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-display font-semibold text-lg">Ready for your next session?</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">3 batches forming right now in your subjects.</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Find study partners and start focusing.</p>
                 </div>
                 <Button variant="hero" onClick={() => navigate("/join-session")} className="flex-shrink-0 group">
                   Join <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />

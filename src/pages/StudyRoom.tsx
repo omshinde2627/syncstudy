@@ -155,9 +155,10 @@ const StudyRoom = () => {
   const [peerProfiles, setPeerProfiles] = useState<PeerProfile[]>([]);
 
   const isSolo = !activeSession || activeSession.capacity === "solo";
-  const peers: Peer[] = activeSession?.participant_user_ids
-    ?.map((uid, i) => ({ id: uid, label: peerProfiles.find(p => p.id === uid)?.display_name || `S${i + 1}` }))
-    ?? [];
+  // Deduplicate participant_user_ids
+  const uniqueParticipantIds = [...new Set(activeSession?.participant_user_ids ?? [])];
+  const peers: Peer[] = uniqueParticipantIds
+    .map((uid, i) => ({ id: uid, label: peerProfiles.find(p => p.id === uid)?.display_name || `S${i + 1}` }));
 
   // Fetch participant profiles
   useEffect(() => {

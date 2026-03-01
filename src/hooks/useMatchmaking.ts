@@ -162,13 +162,15 @@ export function useMatchmaking({
 
     // Step 1 — Insert into waiting_pool
     const bootstrap = async () => {
-      // Upsert: if user already in pool, update
       const msPerDay = 1000 * 60 * 60 * 24;
       const daysLeft = Math.ceil((exam_date.getTime() - Date.now()) / msPerDay);
       const urgency = daysLeft <= 30 ? 3 : daysLeft <= 90 ? 2 : 1;
 
-      // Delete old entry for same user first to avoid duplicate
+      // Delete ALL old entries for this user to prevent duplicates
       await supabase.from("waiting_pool").delete().eq("user_id", userId.current);
+
+      // Small delay to ensure delete completes before insert
+      await new Promise(r => setTimeout(r, 300));
 
       const { data, error: insertErr } = await supabase
         .from("waiting_pool")

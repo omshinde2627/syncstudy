@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS waiting_pool_user_active_unique ON public.waiting_pool (user_id, exam_type, subject, duration) WHERE status = 'waiting';

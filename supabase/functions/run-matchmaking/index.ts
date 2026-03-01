@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     // 2. Fetch all waiting users for same exam+subject+duration
-    const { data: pool, error: poolErr } = await supabase
+    const { data: rawPool, error: poolErr } = await supabase
       .from("waiting_pool")
       .select("*")
       .eq("exam_type", exam_type)
@@ -75,8 +75,17 @@ Deno.serve(async (req) => {
       .order("joined_at", { ascending: true });
 
     if (poolErr) throw poolErr;
-    if (!pool || pool.length < 2) {
-      return new Response(JSON.stringify({ waiting: true, pool_size: pool?.length ?? 0 }), {
+
+    // Deduplicate by user_id (keep earliest entry)
+    const seenUsers = new Set<string>();
+    const pool = (rawPool ?? []).filter((u) => {
+      if (seenUsers.has(u.user_id)) return false;
+      seenUsers.add(u.user_id);
+      return true;
+    });
+
+    if (pool.length < 2) {
+      return new Response(JSON.stringify({ waiting: true, pool_size: pool.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -108,7 +117,7 @@ Deno.serve(async (req) => {
       ...scored.slice(0, 9),
     ].filter(Boolean);
 
-    const participantIds = groupMembers.map((u) => u.user_id);
+    const participantIds = [...new Set(groupMembers.map((u) => u.user_id))];
     const avgFocus = Math.round(
       groupMembers.reduce((s, u) => s + (u.focus_score ?? 50), 0) / groupMembers.length,
     );
