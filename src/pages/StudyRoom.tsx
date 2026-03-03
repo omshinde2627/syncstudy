@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, LogOut, AlertTriangle, Volume2, VolumeX, UserX } from "lucide-react";
+import { MessageSquare, LogOut, AlertTriangle, Volume2, VolumeX, UserX, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ActiveSessionRow } from "@/hooks/useMatchmaking";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -153,7 +155,12 @@ const StudyRoom = () => {
   const [muted, setMuted] = useState(true);
   const [goals, setGoals] = useState(() => defaultGoals(subject, intensity));
   const [peerProfiles, setPeerProfiles] = useState<PeerProfile[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ id: string; user_id: string; display_name: string; content: string; created_at: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const sessionId = activeSession?.session_id ?? "solo-" + user?.id;
   const isSolo = !activeSession || activeSession.capacity === "solo";
   // Deduplicate participant_user_ids
   const uniqueParticipantIds = [...new Set(activeSession?.participant_user_ids ?? [])];
@@ -178,6 +185,52 @@ const StudyRoom = () => {
     };
     fetchProfiles();
   }, [activeSession]);
+
+  // Fetch existing chat messages & subscribe to realtime
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true })
+        .limit(100);
+      if (data) setChatMessages(data as any);
+    };
+    fetchMessages();
+
+    const channel = supabase
+      .channel(`chat-${sessionId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages", filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          setChatMessages((prev) => [...prev, payload.new as any]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionId]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const sendMessage = async () => {
+    if (!chatInput.trim() || sendingChat) return;
+    setSendingChat(true);
+    const profileName = peerProfiles.find(p => p.id === user?.id)?.display_name || user?.email?.split("@")[0] || "You";
+    await supabase.from("chat_messages").insert({
+      session_id: sessionId,
+      user_id: user?.id ?? "",
+      display_name: profileName,
+      content: chatInput.trim(),
+    } as any);
+    setChatInput("");
+    setSendingChat(false);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -425,14 +478,40 @@ const StudyRoom = () => {
             </div>
           )}
 
-          {/* Silent chat */}
-          <div className="flex-1 flex flex-col">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Silent Chat</h3>
-            <div className="flex-1 rounded-xl bg-secondary/50 border border-white/4 p-3 flex items-center justify-center">
-              <p className="text-xs text-muted-foreground/60 text-center italic">
-                Chat is minimal.<br />Focus on your work.
-              </p>
-            </div>
+          {/* Chat */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Chat</h3>
+            <ScrollArea className="flex-1 rounded-xl bg-secondary/50 border border-white/4 p-3 mb-2 max-h-48">
+              <div className="space-y-2">
+                {chatMessages.length === 0 && (
+                  <p className="text-xs text-muted-foreground/60 text-center italic py-4">
+                    No messages yet. Say hi!
+                  </p>
+                )}
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className={`text-xs ${msg.user_id === user?.id ? "text-right" : ""}`}>
+                    <span className="font-semibold text-primary/80">{msg.user_id === user?.id ? "You" : msg.display_name}: </span>
+                    <span className="text-foreground/80">{msg.content}</span>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+            </ScrollArea>
+            <form
+              onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+              className="flex gap-1.5"
+            >
+              <Input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type a message..."
+                className="h-8 text-xs bg-secondary/50 border-white/4"
+                maxLength={200}
+              />
+              <Button type="submit" size="icon-sm" variant="ghost" disabled={sendingChat || !chatInput.trim()}>
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+            </form>
           </div>
         </motion.div>
       </div>
