@@ -32,9 +32,7 @@ const urgencyColors: Record<string, string> = {
   Low: "text-primary",
 };
 
-// ─── Current user focus score ─────────────────────────────────────────────────
-
-const CURRENT_USER_FOCUS = 76;
+// ─── Current user focus score from profile ────────────────────────────────────
 
 // ─── Capacity messaging ──────────────────────────────────────────────────────
 
@@ -67,13 +65,19 @@ const JoinSession = () => {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [profileName, setProfileName] = useState("Student");
+  const [userFocusScore, setUserFocusScore] = useState(50);
 
-  // Fetch profile display name
+  // Fetch profile display name and focus score
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle()
       .then(({ data }) => {
         if (data?.display_name) setProfileName(data.display_name);
+      });
+    // Fetch focus_score separately (may not be in generated types yet)
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data && 'focus_score' in data) setUserFocusScore((data as any).focus_score ?? 50);
       });
   }, [user]);
 
@@ -99,7 +103,7 @@ const JoinSession = () => {
     subject,
     duration,
     intensity,
-    focus_score: CURRENT_USER_FOCUS,
+    focus_score: userFocusScore,
     exam_date: examDateObj,
     enabled: step === 3 && !!(exam && subject && duration && intensity && examDate),
     user_id: user?.id,
