@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Users, Target, Brain, Shield, Zap, Timer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 import { useNavigate } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
+import heroStudy from "@/assets/hero-study.jpg";
+import teamworkArrow from "@/assets/teamwork-arrow.jpg";
 
 const features = [
   { icon: Brain, title: "AI-Matched Groups", description: "Matched by exam, subject, urgency and focus score. No random grouping." },
@@ -28,15 +28,12 @@ const Landing = () => {
     <div className="min-h-screen bg-background overflow-hidden relative">
 
       {/* ── Hero ── */}
-      <header className="relative min-h-screen flex flex-col bg-white overflow-hidden">
-        {/* Layered background */}
+      <header className="relative min-h-screen flex flex-col bg-[hsl(225,20%,6%)] overflow-hidden">
+        {/* Dark ambient background */}
         <div className="absolute inset-0 pointer-events-none">
-          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/50 to-white/90" />
-          {/* Soft colored orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[hsl(263,70%,58%)] opacity-10 blur-3xl" />
-          <div className="absolute top-1/3 right-1/4 w-80 h-80 rounded-full bg-[hsl(217,91%,55%)] opacity-10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[hsl(263,70%,58%)]/10 via-transparent to-[hsl(217,91%,55%)]/10" />
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[hsl(263,70%,58%)] opacity-[0.07] blur-[100px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-[hsl(217,91%,55%)] opacity-[0.07] blur-[100px]" />
         </div>
 
         {/* Nav */}
@@ -45,12 +42,12 @@ const Landing = () => {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] flex items-center justify-center shadow-lg">
               <Zap className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-display font-bold tracking-tight text-gray-900">SyncStudy</span>
+            <span className="text-xl font-display font-bold tracking-tight text-white">SyncStudy</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
-            <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
-            <a href="#how" className="hover:text-gray-900 transition-colors">How It Works</a>
-            <a href="#stats" className="hover:text-gray-900 transition-colors">Stats</a>
+          <div className="hidden md:flex items-center gap-8 text-sm text-gray-400">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#how" className="hover:text-white transition-colors">How It Works</a>
+            <a href="#stats" className="hover:text-white transition-colors">Stats</a>
           </div>
           <button
             onClick={() => navigate("/dashboard")}
@@ -60,91 +57,127 @@ const Landing = () => {
           </button>
         </nav>
 
-        {/* Hero content */}
-        <div className="relative z-10 flex-1 flex items-center justify-center px-6 pt-12">
-          <div className="max-w-5xl mx-auto text-center">
+        {/* Hero content — split layout */}
+        <div className="relative z-10 flex-1 flex items-center px-6 lg:px-14">
+          <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-7"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-[hsl(263,70%,58%)]/30 text-sm text-[hsl(263,70%,45%)] shadow-sm">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                47 students studying right now
-                <Sparkles className="h-3 w-3 ml-0.5 opacity-70" />
-              </div>
-            </motion.div>
-
-            <motion.h1
-              className="text-5xl md:text-7xl lg:text-[88px] font-display font-bold tracking-tight leading-[1.05] mb-6 text-gray-900"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              Stop Studying Alone.{" "}
-              <br className="hidden md:block" />
-              <span className="text-gradient-brand">Study Like It Matters.</span>
-            </motion.h1>
-
-            <motion.p
-              className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              AI-matched accountability sessions for serious students.
-              Timed. Tracked. No excuses.
-            </motion.p>
-
-            <motion.div
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              {/* Primary CTA — vivid gradient */}
-              <button
-                onClick={() => navigate("/join-session")}
-                className="group inline-flex items-center justify-center gap-2 h-14 px-10 rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200"
+            {/* Left — Text */}
+            <div className="order-2 lg:order-1">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mb-6"
               >
-                Join Next Session
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-              {/* Secondary CTA — white with border */}
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="inline-flex items-center justify-center h-14 px-10 rounded-2xl text-base font-semibold text-gray-800 bg-white border-2 border-gray-200 shadow hover:border-[hsl(263,70%,58%)]/50 hover:text-[hsl(263,70%,58%)] hover:shadow-md active:scale-[0.97] transition-all duration-200"
-              >
-                View Dashboard
-              </button>
-            </motion.div>
-
-            {/* Live avatar row */}
-            <motion.div
-              className="mt-14 flex justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-            >
-              <div className="flex items-center gap-4 text-sm text-gray-600 bg-white/80 backdrop-blur rounded-full px-5 py-2.5 border border-gray-200 shadow-sm">
-                <div className="flex -space-x-2.5">
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-7 w-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-semibold text-white"
-                      style={{ background: `linear-gradient(135deg, hsl(${250 + i * 15}, 70%, 55%), hsl(${210 + i * 15}, 80%, 50%))` }}
-                    >
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur border border-white/10 text-sm text-[hsl(263,70%,75%)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  47 students studying right now
+                  <Sparkles className="h-3 w-3 ml-0.5 opacity-70" />
                 </div>
-                <span>5 people studying Physics right now</span>
+              </motion.div>
+
+              <motion.h1
+                className="text-4xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight leading-[1.05] mb-6 text-white"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Stop Studying Alone.{" "}
+                <br className="hidden md:block" />
+                <span className="text-gradient-brand">Study Like It Matters.</span>
+              </motion.h1>
+
+              <motion.p
+                className="text-lg md:text-xl text-gray-400 max-w-lg mb-10 leading-relaxed"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                AI-matched accountability sessions for serious students.
+                Timed. Tracked. No excuses.
+              </motion.p>
+
+              <motion.div
+                className="flex flex-col sm:flex-row gap-4"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <button
+                  onClick={() => navigate("/join-session")}
+                  className="group inline-flex items-center justify-center gap-2 h-14 px-10 rounded-2xl text-base font-semibold text-white bg-gradient-to-r from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200"
+                >
+                  Join Next Session
+                  <ArrowRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="inline-flex items-center justify-center h-14 px-10 rounded-2xl text-base font-semibold text-gray-300 bg-white/5 border border-white/10 hover:border-[hsl(263,70%,58%)]/50 hover:text-white hover:bg-white/10 active:scale-[0.97] transition-all duration-200"
+                >
+                  View Dashboard
+                </button>
+              </motion.div>
+
+              {/* Live avatar row */}
+              <motion.div
+                className="mt-10 flex"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
+                <div className="flex items-center gap-4 text-sm text-gray-400 bg-white/5 backdrop-blur rounded-full px-5 py-2.5 border border-white/10">
+                  <div className="flex -space-x-2.5">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-7 w-7 rounded-full border-2 border-[hsl(225,20%,6%)] flex items-center justify-center text-[10px] font-semibold text-white"
+                        style={{ background: `linear-gradient(135deg, hsl(${250 + i * 15}, 70%, 55%), hsl(${210 + i * 15}, 80%, 50%))` }}
+                      >
+                        {String.fromCharCode(65 + i)}
+                      </div>
+                    ))}
+                  </div>
+                  <span>5 people studying Physics right now</span>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Right — Hero Image */}
+            <motion.div
+              className="order-1 lg:order-2 flex justify-center"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <div className="relative w-full max-w-lg">
+                {/* Glow behind image */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-[hsl(263,70%,58%)]/20 to-[hsl(217,91%,55%)]/20 rounded-3xl blur-2xl" />
+                <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                  <img
+                    src={heroStudy}
+                    alt="Student studying with laptop in a cozy setup with colorful notes"
+                    className="w-full h-auto object-cover aspect-[4/5]"
+                  />
+                  {/* Overlay gradient for readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[hsl(225,20%,6%)]/60 via-transparent to-transparent" />
+                  {/* Floating badge on image */}
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center gap-3 bg-black/50 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[hsl(263,70%,58%)] to-[hsl(217,91%,55%)] flex items-center justify-center">
+                      <Brain className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold">Focus Mode Active</p>
+                      <p className="text-gray-400 text-xs">Deep study session in progress</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>
         </div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent z-10" />
       </header>
 
       {/* ── Stats ── */}
@@ -244,25 +277,47 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-28 px-6 relative">
+      {/* ── CTA with teamwork image ── */}
+      <section className="py-28 px-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-radial-purple pointer-events-none" />
         <motion.div
-          className="relative max-w-2xl mx-auto text-center"
+          className="relative max-w-5xl mx-auto grid lg:grid-cols-2 gap-12 items-center"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4 tracking-tight">
-            Ready to Study <span className="text-gradient-brand">Seriously?</span>
-          </h2>
-          <p className="text-muted-foreground mb-8 text-lg">
-            Join the next session. No signup walls. Just pick your subject and go.
-          </p>
-          <Button variant="hero" size="xl" onClick={() => navigate("/join-session")} className="group">
-            Join Next Session
-            <ArrowRight className="ml-1 group-hover:translate-x-0.5 transition-transform" />
-          </Button>
+          {/* Image */}
+          <motion.div
+            className="flex justify-center"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="relative max-w-sm">
+              <div className="absolute -inset-3 bg-gradient-to-br from-[hsl(263,70%,58%)]/15 to-[hsl(180,80%,50%)]/15 rounded-3xl blur-xl" />
+              <img
+                src={teamworkArrow}
+                alt="Team pulling together towards growth and success"
+                className="relative rounded-2xl shadow-2xl border border-white/10 w-full"
+              />
+            </div>
+          </motion.div>
+
+          {/* Text */}
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4 tracking-tight">
+              Grow Together.{" "}
+              <span className="text-gradient-brand">Rise Together.</span>
+            </h2>
+            <p className="text-muted-foreground mb-8 text-lg max-w-md mx-auto lg:mx-0">
+              Join the next session. No signup walls. Just pick your subject and go. Your study group is waiting.
+            </p>
+            <Button variant="hero" size="xl" onClick={() => navigate("/join-session")} className="group">
+              Join Next Session
+              <ArrowRight className="ml-1 group-hover:translate-x-0.5 transition-transform" />
+            </Button>
+          </div>
         </motion.div>
       </section>
 
